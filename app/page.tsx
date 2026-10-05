@@ -80,10 +80,10 @@ export default async function GamesPage() {
     <div className="mx-auto w-full max-w-2xl px-4 py-6">
       <header className="flex items-center justify-between gap-4 border-b border-foreground/10 pb-4">
         <h1 className="text-xl font-semibold tracking-tight">Pick&apos;em</h1>
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex min-w-0 items-center gap-3 text-sm">
           <span className="truncate text-foreground/60">{user.email}</span>
-          <form action={signOut}>
-            <button className="rounded-md border border-foreground/20 px-3 py-1.5 font-medium hover:border-foreground/50">
+          <form action={signOut} className="shrink-0">
+            <button className="whitespace-nowrap rounded-md border border-foreground/20 px-3 py-1.5 font-medium hover:border-foreground/50">
               Sign out
             </button>
           </form>
@@ -104,7 +104,7 @@ export default async function GamesPage() {
 
         {error && (
           <p role="alert" className="mt-6 text-sm text-red-600">
-            Could not load games: {error.message}
+            Could not load games. Please refresh and try again.
           </p>
         )}
 

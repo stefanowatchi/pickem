@@ -73,7 +73,16 @@ export async function togglePick(
             { onConflict: "user_id,game_id" },
           );
 
-  if (error) return { error: error.message };
+  if (error) {
+    // P0001 is a message raised by our own trigger, which is safe to show.
+    // Anything else could expose database details, so keep it generic.
+    return {
+      error:
+        error.code === "P0001"
+          ? error.message
+          : "Could not save your pick. Please try again.",
+    };
+  }
 
   revalidatePath("/");
   return null;

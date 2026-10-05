@@ -1,7 +1,8 @@
+import "server-only";
 import { createClient } from "@supabase/supabase-js";
 
 // Server-only client that bypasses database rules. Used only to save odds.
-// Never import this from a Client Component.
+// The import above makes the build fail if a Client Component imports this.
 export function createAdminClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
