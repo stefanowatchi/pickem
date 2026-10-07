@@ -1,11 +1,11 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export const NFL = "americanfootball_nfl";
-
-const STALE_MS = 3 * 60 * 60 * 1000; // refetch odds at most every 3 hours
+// The free plan has 500 credits a month and each fetch costs 1. With four
+// leagues, every 6 hours is at most 16 fetches a day if every tab stays busy.
+const STALE_MS = 6 * 60 * 60 * 1000; // refetch a league's odds at most every 6 hours
 const RETRY_MS = 10 * 60 * 1000; // after a failed fetch, wait 10 minutes
-const LOW_CREDITS = 20; // below this, refetch only once a day
+const LOW_CREDITS = 100; // below this, refetch each league only once a day
 const LOW_CREDITS_STALE_MS = 24 * 60 * 60 * 1000;
 const PREFERRED_BOOKMAKER = "draftkings";
 
@@ -27,17 +27,19 @@ type OddsEvent = {
 
 // Fetches odds from The Odds API and saves them, unless they were fetched
 // recently. Never throws: on any failure the page shows the stored odds.
-export async function syncOddsIfStale(sportKey: string = NFL) {
+export async function syncOddsIfStale(sportKey: string) {
   try {
     const admin = createAdminClient();
 
-    const { data: sync } = await admin
+    const { data: syncs } = await admin
       .from("odds_sync")
-      .select("last_synced_at, credits_remaining")
-      .eq("sport_key", sportKey)
-      .maybeSingle();
+      .select("sport_key, last_synced_at, credits_remaining")
+      .order("last_synced_at", { ascending: false });
 
-    const credits: number | null = sync?.credits_remaining ?? null;
+    const sync = syncs?.find((row) => row.sport_key === sportKey);
+    // Credits are shared by all leagues, so use the most recent reading.
+    const credits: number | null =
+      syncs?.find((row) => row.credits_remaining !== null)?.credits_remaining ?? null;
     const staleAfter =
       credits !== null && credits < LOW_CREDITS ? LOW_CREDITS_STALE_MS : STALE_MS;
     if (sync && Date.now() - Date.parse(sync.last_synced_at) < staleAfter) {

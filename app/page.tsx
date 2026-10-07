@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { signOut } from "@/app/actions";
 import { PickButtons } from "@/app/pick-buttons";
-import { NFL, syncOddsIfStale } from "@/lib/odds";
+import { LEAGUES, leagueFromSlug, type League } from "@/lib/leagues";
+import { syncOddsIfStale } from "@/lib/odds";
 import { createClient } from "@/lib/supabase/server";
 
 type Game = {
@@ -32,20 +34,19 @@ const timeFormat = new Intl.DateTimeFormat("en-US", {
 async function loadGamesAndPicks(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
+  league: League,
 ) {
   const now = Date.now();
-  // Upcoming games for the next 8 days, plus games that started in the last 12 hours.
   const from = new Date(now - 12 * 60 * 60 * 1000).toISOString();
-  const to = new Date(now + 8 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [{ data: games, error }, { data: picks }] = await Promise.all([
+  const [{ data: allGames, error }, { data: picks }] = await Promise.all([
     supabase
       .from("games")
       .select("id, commence_time, home_team, away_team, home_price, away_price, bookmaker")
-      .eq("sport_key", NFL)
+      .eq("sport_key", league.key)
       .gte("commence_time", from)
-      .lte("commence_time", to)
       .order("commence_time")
+      .limit(300)
       .returns<Game[]>(),
     supabase
       .from("picks")
@@ -54,21 +55,42 @@ async function loadGamesAndPicks(
       .returns<Pick[]>(),
   ]);
 
+  // Show games that started in the last 12 hours, plus the league's window of
+  // upcoming days. If the season hasn't started, show its first two days instead.
+  const dayMs = 24 * 60 * 60 * 1000;
+  const firstUpcoming = (allGames ?? [])
+    .map((game) => Date.parse(game.commence_time))
+    .find((time) => time > now);
+  const windowEnd = Math.max(
+    now + league.daysAhead * dayMs,
+    (firstUpcoming ?? 0) + 2 * dayMs,
+  );
+  const games = (allGames ?? []).filter(
+    (game) => Date.parse(game.commence_time) <= windowEnd,
+  );
+
   return { games, picks, error, now };
 }
 
-export default async function GamesPage() {
+export default async function GamesPage({ searchParams }: PageProps<"/">) {
+  const league = leagueFromSlug((await searchParams).league);
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  await syncOddsIfStale(NFL);
+  await syncOddsIfStale(league.key);
 
-  const { games, picks, error, now } = await loadGamesAndPicks(supabase, user.id);
+  const { games, picks, error, now } = await loadGamesAndPicks(
+    supabase,
+    user.id,
+    league,
+  );
 
   const pickByGame = new Map((picks ?? []).map((pick) => [pick.game_id, pick]));
+  const picksShown = (games ?? []).filter((game) => pickByGame.has(game.id)).length;
 
   const days = new Map<string, Game[]>();
   for (const game of games ?? []) {
@@ -91,15 +113,35 @@ export default async function GamesPage() {
       </header>
 
       <main className="py-6">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-semibold">NFL games</h2>
+        <nav aria-label="Leagues" className="flex gap-2 overflow-x-auto">
+          {LEAGUES.map((item) => {
+            const active = item.slug === league.slug;
+            return (
+              <Link
+                key={item.slug}
+                href={item.slug === LEAGUES[0].slug ? "/" : `/?league=${item.slug}`}
+                aria-current={active ? "page" : undefined}
+                className={`rounded-full border px-4 py-1.5 text-sm font-medium ${
+                  active
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-foreground/20 hover:border-foreground/50"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="mt-6 flex items-baseline justify-between">
+          <h2 className="text-lg font-semibold">{league.label} games</h2>
           <p className="text-sm text-foreground/60">
-            {pickByGame.size} {pickByGame.size === 1 ? "pick" : "picks"} made
+            {picksShown} {picksShown === 1 ? "pick" : "picks"} made
           </p>
         </div>
         <p className="mt-1 text-sm text-foreground/60">
-          Tap a team to pick it. Tap it again to remove the pick. Picks lock at
-          kickoff. Times are Eastern.
+          Tap a team to pick it. Tap it again to remove the pick. Picks lock
+          when the game starts. Times are Eastern.
         </p>
 
         {error && (
@@ -110,7 +152,7 @@ export default async function GamesPage() {
 
         {!error && days.size === 0 && (
           <p className="mt-6 text-sm text-foreground/60">
-            No games with odds right now. Check back soon.
+            No {league.label} games with odds right now. Check back soon.
           </p>
         )}
 

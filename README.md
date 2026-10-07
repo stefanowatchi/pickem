@@ -2,7 +2,7 @@
 
 A pick'em app for friend groups who follow sports. Pick game winners with the odds shown.
 
-This first version covers NFL games: sign in, pick a winner, and your picks are saved to your account.
+It covers NFL, NBA, MLB and NHL games: sign in, pick a winner, and your picks are saved to your account.
 
 ## Stack
 
@@ -25,4 +25,4 @@ Then open http://localhost:3000.
 
 ## How odds are fetched
 
-Odds are stored in Supabase. When someone opens the games page and the stored odds are more than 3 hours old, the server fetches fresh ones (1 API credit). The browser never talks to The Odds API and never sees its key.
+Odds are stored in Supabase. When someone opens the games page and the stored odds for that league are more than 6 hours old, the server fetches fresh ones (1 API credit). The browser never talks to The Odds API and never sees its key.
