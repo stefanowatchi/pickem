@@ -74,16 +74,111 @@ export async function togglePick(
           );
 
   if (error) {
-    // P0001 is a message raised by our own trigger, which is safe to show.
-    // Anything else could expose database details, so keep it generic.
-    return {
-      error:
-        error.code === "P0001"
-          ? error.message
-          : "Could not save your pick. Please try again.",
-    };
+    return { error: friendlyError(error, "Could not save your pick. Please try again.") };
   }
 
   revalidatePath("/");
   return null;
+}
+
+// P0001 is a message raised by our own database functions, which is safe to
+// show. Anything else could expose database details, so it stays generic.
+function friendlyError(
+  error: { code?: string; message: string },
+  fallback: string,
+) {
+  return error.code === "P0001" ? error.message : fallback;
+}
+
+export async function saveDisplayName(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const displayName = String(formData.get("displayName") ?? "").trim();
+  if (displayName.length < 2 || displayName.length > 24) {
+    return { error: "Names must be 2 to 24 characters." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("profiles")
+    .upsert({ id: user.id, display_name: displayName });
+
+  if (error) {
+    return {
+      error:
+        error.code === "23505"
+          ? "That name is taken. Try another."
+          : "Could not save your name. Please try again.",
+    };
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/");
+}
+
+export async function createGroup(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const name = String(formData.get("name") ?? "").trim();
+  if (name.length < 2 || name.length > 40) {
+    return { error: "Group names must be 2 to 40 characters." };
+  }
+
+  const supabase = await createClient();
+  const { data: groupId, error } = await supabase.rpc("create_group", {
+    group_name: name,
+  });
+  if (error) {
+    return { error: friendlyError(error, "Could not create the group. Please try again.") };
+  }
+
+  revalidatePath("/groups");
+  redirect(`/groups/${groupId}`);
+}
+
+export async function joinGroup(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const code = String(formData.get("code") ?? "").trim().toUpperCase();
+  if (!/^[A-Z0-9]{6}$/.test(code)) {
+    return { error: "Codes are 6 letters and numbers." };
+  }
+
+  const supabase = await createClient();
+  const { data: groupId, error } = await supabase.rpc("join_group", {
+    group_code: code,
+  });
+  if (error) {
+    return { error: friendlyError(error, "Could not join the group. Please try again.") };
+  }
+
+  revalidatePath("/groups");
+  redirect(`/groups/${groupId}`);
+}
+
+export async function leaveGroup(formData: FormData) {
+  const groupId = String(formData.get("groupId") ?? "");
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  await supabase
+    .from("group_members")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("user_id", user.id);
+
+  revalidatePath("/groups");
+  redirect("/groups");
 }
