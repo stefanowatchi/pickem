@@ -127,9 +127,11 @@ export default async function GamesPage({ searchParams }: PageProps<"/">) {
         </p>
       </div>
       <p className="mt-2 text-sm text-muted">
-        Tap a team to pick it, tap again to drop it. Picks lock at game time and
-        are scored at the closing odds, so the number you see can still move.
-        Times are Eastern.
+        Tap a team to pick it, tap again to drop it. Pick as many games as you
+        like. Picks lock when the game starts. Times are Eastern.{" "}
+        <Link href="/rules" className="font-semibold text-accent hover:underline">
+          How scoring works →
+        </Link>
       </p>
 
       {error && (

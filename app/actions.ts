@@ -112,10 +112,14 @@ export async function saveDisplayName(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const displayName = String(formData.get("displayName") ?? "").trim();
+  // Collapse repeated spaces so "Big  Mike" and "Big Mike" count as the same name.
+  const displayName = String(formData.get("displayName") ?? "")
+    .trim()
+    .replace(/\s+/g, " ");
   if (displayName.length < 2 || displayName.length > 24) {
     return { error: "Names must be 2 to 24 characters." };
   }
+  const editing = formData.get("mode") === "edit";
 
   const supabase = await createClient();
   const {
@@ -130,6 +134,8 @@ export async function saveDisplayName(
   if (error) {
     return {
       error:
+        // 23505 is the database's unique rule: names are unique across the
+        // whole app, ignoring capital letters.
         error.code === "23505"
           ? "That name is taken. Try another."
           : "Could not save your name. Please try again.",
@@ -137,6 +143,7 @@ export async function saveDisplayName(
   }
 
   revalidatePath("/", "layout");
+  if (editing) return { message: `Saved. You're now ${displayName}.` };
   redirect("/");
 }
 

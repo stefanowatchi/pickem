@@ -28,9 +28,13 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             <Logo />
           </Link>
           <div className="flex min-w-0 items-center gap-3">
-            <span className="truncate text-sm font-semibold">
+            <Link
+              href="/profile"
+              title="Edit your profile"
+              className="truncate text-sm font-semibold underline decoration-line decoration-2 underline-offset-4 hover:decoration-accent"
+            >
               {profile.display_name}
-            </span>
+            </Link>
             <form action={signOut} className="shrink-0">
               <button className="btn-ghost">Sign out</button>
             </form>

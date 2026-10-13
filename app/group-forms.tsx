@@ -17,11 +17,15 @@ function FormError({ state }: { state: FormState }) {
   );
 }
 
-export function NameForm() {
+// With `currentName` this edits an existing name and stays on the page.
+// Without it, it is the first-time form and continues into the app.
+export function NameForm({ currentName }: { currentName?: string }) {
   const [state, formAction, pending] = useActionState(saveDisplayName, null);
+  const editing = currentName !== undefined;
 
   return (
     <form action={formAction} className="card mt-6 p-5">
+      {editing && <input type="hidden" name="mode" value="edit" />}
       <label className="block">
         <span className="label">Display name</span>
         <input
@@ -29,13 +33,23 @@ export function NameForm() {
           required
           minLength={2}
           maxLength={24}
+          defaultValue={currentName}
           autoComplete="nickname"
           className="field mt-1.5"
         />
       </label>
+      <p className="mt-2 text-xs text-muted">
+        2 to 24 characters. It has to be unique: no two players can share a
+        name, and capital letters don&apos;t make it different.
+      </p>
       <FormError state={state} />
+      {state?.message && (
+        <p role="status" className="mt-2 text-sm text-win">
+          {state.message}
+        </p>
+      )}
       <button disabled={pending} className="btn-primary mt-4 w-full">
-        Let&apos;s go
+        {editing ? "Save name" : "Let\u2019s go"}
       </button>
     </form>
   );

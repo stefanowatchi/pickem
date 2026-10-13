@@ -13,16 +13,17 @@ export function NavLinks({ userId }: { userId: string }) {
       label: "My picks",
       active: pathname === `/players/${userId}`,
     },
+    { href: "/rules", label: "Rules", active: pathname === "/rules" },
   ];
 
   return (
-    <nav aria-label="Main" className="mt-5 flex border-b border-line">
+    <nav aria-label="Main" className="mt-5 flex overflow-x-auto overflow-y-hidden border-b border-line">
       {links.map((link) => (
         <Link
           key={link.href}
           href={link.href}
           aria-current={link.active ? "page" : undefined}
-          className={`-mb-px border-b-2 px-4 py-2.5 text-xs font-bold uppercase tracking-[0.12em] transition-colors ${
+          className={`-mb-px shrink-0 border-b-2 px-2.5 py-2.5 text-xs font-bold uppercase tracking-[0.08em] transition-colors sm:px-4 sm:tracking-[0.12em] ${
             link.active
               ? "border-accent text-foreground"
               : "border-transparent text-muted hover:text-foreground"

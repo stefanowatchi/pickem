@@ -2,14 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { leaveGroup, removeMember } from "@/app/actions";
 import { formatPoints, weekStart } from "@/lib/format";
+import { MIN_PICKS_TO_RANK } from "@/lib/rules";
 import { syncPendingScores } from "@/lib/scores";
 import { createClient } from "@/lib/supabase/server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-// A player needs this many graded picks in the period to be ranked, so one
-// lucky pick followed by sitting out can't top the board.
-const MIN_PICKS_TO_RANK = 3;
 
 type Standing = {
   user_id: string;
@@ -65,6 +62,9 @@ export default async function GroupPage({
     .filter((row) => row.graded < MIN_PICKS_TO_RANK)
     .sort((a, b) => b.graded - a.graded || a.display_name.localeCompare(b.display_name));
   const isOwner = group.created_by === user?.id;
+  const me = standings.find((row) => row.user_id === user?.id);
+  const stillNeeded = me ? Math.max(0, MIN_PICKS_TO_RANK - me.graded) : 0;
+  const periodLabel = period === "week" ? "this week" : "this season";
 
   return (
     <main className="py-6">
@@ -104,6 +104,21 @@ export default async function GroupPage({
         </p>
       )}
 
+      {!error && stillNeeded > 0 && (
+        <p className="mt-4 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2.5 text-sm">
+          <span className="font-semibold text-accent">
+            You&apos;re not ranked yet.
+          </span>{" "}
+          You need {stillNeeded} more finished{" "}
+          {stillNeeded === 1 ? "pick" : "picks"} {periodLabel}. You have{" "}
+          {me?.graded ?? 0} of {MIN_PICKS_TO_RANK}
+          {me && me.in_progress > 0
+            ? `, with ${me.in_progress} more in progress`
+            : ""}
+          .
+        </p>
+      )}
+
       <section className="card mt-4 overflow-hidden">
         <div className="label grid grid-cols-[2.5rem_1fr_4rem_4.5rem] gap-2 border-b border-line px-3 py-2 sm:grid-cols-[2.5rem_1fr_4rem_4rem_4.5rem]">
           <span>#</span>
@@ -116,7 +131,7 @@ export default async function GroupPage({
         {ranked.length === 0 && (
           <p className="px-3 py-6 text-center text-sm text-muted">
             Nobody is ranked yet. It takes {MIN_PICKS_TO_RANK} finished picks{" "}
-            {period === "week" ? "this week" : "this season"}.
+            {periodLabel} to get on the board.
           </p>
         )}
 
@@ -194,12 +209,28 @@ export default async function GroupPage({
       )}
 
       <section className="mt-6 text-sm text-muted">
-        <h3 className="label">How scoring works</h3>
-        <p className="mt-2">
-          Every pick is a pretend 100-point stake at the closing odds. A win
-          pays what the odds say (+380 wins 380, -500 wins 20). A loss costs
-          100. Everyone who picks the same team gets the same odds.
-        </p>
+        <h3 className="label">The short version</h3>
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          <li>
+            You need {MIN_PICKS_TO_RANK} finished picks {periodLabel} to be
+            ranked. There is no maximum.
+          </li>
+          <li>
+            A win pays what the odds say (+380 wins 380, -500 wins 20). A loss
+            costs 100.
+          </li>
+          <li>
+            {period === "week"
+              ? "The weekly board resets every Tuesday morning."
+              : "The season board counts every pick since you joined."}
+          </li>
+        </ul>
+        <Link
+          href="/rules"
+          className="mt-2 inline-block font-semibold text-accent hover:underline"
+        >
+          Read the full rules →
+        </Link>
       </section>
 
       {isOwner && standings.length > 1 && (
