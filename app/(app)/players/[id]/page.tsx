@@ -25,12 +25,36 @@ type ScoredPick = {
   points: number;
 };
 
-const OUTCOME_LABEL: Record<Outcome, string> = {
-  won: "Won",
-  lost: "Lost",
-  tie: "Tie",
-  pending: "Pending",
-};
+const RESULTS_KEPT_MS = 3 * 24 * 60 * 60 * 1000;
+
+function outcomeLabel(pick: ScoredPick, now: number) {
+  if (pick.outcome === "won") return "Won";
+  if (pick.outcome === "lost") return "Lost";
+  if (pick.outcome === "tie") return "Tie";
+  const start = Date.parse(pick.commence_time);
+  if (start > now) return "Upcoming";
+  // Results are only kept for 3 days, so an older game that never got one
+  // (postponed or cancelled) is void and scores nothing.
+  return now - start > RESULTS_KEPT_MS ? "No result" : "In progress";
+}
+
+async function loadPicks(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  playerId: string,
+) {
+  // Database rules decide what comes back: all of your own picks, or another
+  // player's picks only for games that have started and only if you share a group.
+  const { data: picks, error } = await supabase
+    .from("scored_picks")
+    .select(
+      "id, picked_team, sport_key, commence_time, home_team, away_team, home_score, away_score, odds, outcome, points",
+    )
+    .eq("user_id", playerId)
+    .order("commence_time", { ascending: false })
+    .limit(200)
+    .returns<ScoredPick[]>();
+  return { picks, error, now: Date.now() };
+}
 
 export default async function PlayerPage({ params }: PageProps<"/players/[id]">) {
   const { id } = await params;
@@ -50,17 +74,7 @@ export default async function PlayerPage({ params }: PageProps<"/players/[id]">)
 
   await syncPendingScores();
 
-  // Database rules decide what comes back: all of your own picks, or another
-  // player's picks only for games that have started and only if you share a group.
-  const { data: picks, error } = await supabase
-    .from("scored_picks")
-    .select(
-      "id, picked_team, sport_key, commence_time, home_team, away_team, home_score, away_score, odds, outcome, points",
-    )
-    .eq("user_id", id)
-    .order("commence_time", { ascending: false })
-    .limit(200)
-    .returns<ScoredPick[]>();
+  const { picks, error, now } = await loadPicks(supabase, id);
 
   const isMe = id === user?.id;
   const graded = (picks ?? []).filter((pick) => pick.outcome !== "pending");
@@ -133,7 +147,7 @@ export default async function PlayerPage({ params }: PageProps<"/players/[id]">)
                 </p>
               </div>
               <div className={`shrink-0 text-right ${tone}`}>
-                <p className="label !text-current">{OUTCOME_LABEL[pick.outcome]}</p>
+                <p className="label !text-current">{outcomeLabel(pick, now)}</p>
                 <p className="font-mono text-lg font-bold tabular-nums">
                   {pick.outcome === "pending" ? "–" : formatPoints(Number(pick.points))}
                 </p>

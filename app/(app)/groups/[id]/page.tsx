@@ -71,9 +71,9 @@ export default async function GroupPage({
       <Link href="/groups" className="label hover:!text-foreground">
         ← All groups
       </Link>
-      <div className="mt-3 flex items-end justify-between gap-4">
-        <h2 className="display truncate text-4xl">{group.name}</h2>
-        <div className="shrink-0 text-right">
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <h2 className="display break-words text-4xl">{group.name}</h2>
+        <div className="shrink-0 sm:text-right">
           <p className="label">Group code</p>
           <p className="font-mono text-lg font-bold tracking-[0.25em] text-accent">
             {group.code}
@@ -125,7 +125,7 @@ export default async function GroupPage({
             <li
               key={row.user_id}
               className={`grid grid-cols-[2.5rem_1fr_4rem_4.5rem] items-center gap-2 border-b border-line px-3 py-3 last:border-b-0 sm:grid-cols-[2.5rem_1fr_4rem_4rem_4.5rem] ${
-                row.user_id === user?.id ? "bg-accent/5" : ""
+                row.user_id === user?.id ? "bg-accent/10" : ""
               }`}
             >
               <span
@@ -133,15 +133,19 @@ export default async function GroupPage({
               >
                 {index + 1}
               </span>
-              <Link
-                href={`/players/${row.user_id}`}
-                className="truncate font-semibold hover:text-accent"
-              >
-                {row.display_name}
+              <span className="flex min-w-0 items-center gap-2">
+                <Link
+                  href={`/players/${row.user_id}`}
+                  className="truncate font-semibold hover:text-accent"
+                >
+                  {row.display_name}
+                </Link>
                 {row.user_id === user?.id && (
-                  <span className="label ml-2">You</span>
+                  <span className="label hidden shrink-0 !text-accent sm:inline">
+                    You
+                  </span>
                 )}
-              </Link>
+              </span>
               <span className="text-right font-mono text-sm tabular-nums text-muted">
                 {row.wins}-{row.losses}
               </span>
@@ -169,13 +173,17 @@ export default async function GroupPage({
                 key={row.user_id}
                 className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm"
               >
-                <Link
-                  href={`/players/${row.user_id}`}
-                  className="truncate font-semibold hover:text-accent"
-                >
-                  {row.display_name}
-                  {row.user_id === user?.id && <span className="label ml-2">You</span>}
-                </Link>
+                <span className="flex min-w-0 items-center gap-2">
+                  <Link
+                    href={`/players/${row.user_id}`}
+                    className="truncate font-semibold hover:text-accent"
+                  >
+                    {row.display_name}
+                  </Link>
+                  {row.user_id === user?.id && (
+                    <span className="label shrink-0 !text-accent">You</span>
+                  )}
+                </span>
                 <span className="shrink-0 text-muted">
                   {row.graded} of {MIN_PICKS_TO_RANK} finished picks
                 </span>
