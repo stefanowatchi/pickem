@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { signOut } from "@/app/actions";
+import { Logo } from "@/app/logo";
 import { NavLinks } from "@/app/nav-links";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,22 +21,22 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   if (!profile) redirect("/welcome");
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-6">
-      <header className="border-b border-foreground/10 pb-4">
+    <div className="mx-auto w-full max-w-2xl px-4 pb-16 pt-5">
+      <header>
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-xl font-semibold tracking-tight">Pick&apos;em</h1>
-          <div className="flex min-w-0 items-center gap-3 text-sm">
-            <span className="truncate text-foreground/60">
+          <Link href="/" aria-label="Pick'em home">
+            <Logo />
+          </Link>
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="truncate text-sm font-semibold">
               {profile.display_name}
             </span>
             <form action={signOut} className="shrink-0">
-              <button className="whitespace-nowrap rounded-md border border-foreground/20 px-3 py-1.5 font-medium hover:border-foreground/50">
-                Sign out
-              </button>
+              <button className="btn-ghost">Sign out</button>
             </form>
           </div>
         </div>
-        <NavLinks />
+        <NavLinks userId={user.id} />
       </header>
       {children}
     </div>

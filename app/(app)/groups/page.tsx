@@ -20,35 +20,36 @@ export default async function GroupsPage() {
 
   return (
     <main className="py-6">
-      <h2 className="text-lg font-semibold">Your groups</h2>
-      <p className="mt-1 text-sm text-foreground/60">
-        A group is you and your friends. Share its code so they can join.
+      <h2 className="display text-3xl">Your groups</h2>
+      <p className="mt-2 text-sm text-muted">
+        A group is you and your friends on one leaderboard. Share its code so
+        they can join.
       </p>
 
       {error && (
-        <p role="alert" className="mt-6 text-sm text-red-600">
+        <p role="alert" className="mt-6 text-sm text-loss">
           Could not load your groups. Please refresh and try again.
         </p>
       )}
 
       {!error && (groups ?? []).length === 0 && (
-        <p className="mt-6 text-sm text-foreground/60">
+        <p className="card mt-6 p-6 text-center text-sm text-muted">
           You&apos;re not in a group yet. Join one with a code, or start your own.
         </p>
       )}
 
-      <ul className="mt-4 space-y-3">
+      <ul className="mt-5 space-y-3">
         {(groups ?? []).map((group) => {
           const count = memberCount.get(group.id) ?? 0;
           return (
             <li key={group.id}>
               <Link
                 href={`/groups/${group.id}`}
-                className="flex items-center justify-between gap-3 rounded-lg border border-foreground/10 p-3 hover:border-foreground/40"
+                className="card flex items-center justify-between gap-3 p-4 transition-colors hover:border-accent"
               >
-                <span className="truncate font-medium">{group.name}</span>
-                <span className="shrink-0 text-sm text-foreground/60">
-                  {count} {count === 1 ? "member" : "members"}
+                <span className="display truncate text-2xl">{group.name}</span>
+                <span className="label shrink-0">
+                  {count} {count === 1 ? "member" : "members"} →
                 </span>
               </Link>
             </li>
@@ -56,7 +57,7 @@ export default async function GroupsPage() {
         })}
       </ul>
 
-      <div className="mt-8 space-y-6 border-t border-foreground/10 pt-6">
+      <div className="mt-8 grid gap-3 sm:grid-cols-2">
         <JoinGroupForm />
         <CreateGroupForm />
       </div>

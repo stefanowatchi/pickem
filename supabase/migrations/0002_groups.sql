@@ -46,6 +46,20 @@ as $$
   );
 $$;
 
+-- True when the signed-in user created the group.
+create function public.is_group_owner(target_group uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.groups g
+    where g.id = target_group and g.created_by = (select auth.uid())
+  );
+$$;
+
 -- Profiles: signed-in users can read names. You can create and change only your own.
 grant select, insert, update on public.profiles to authenticated;
 
@@ -75,9 +89,11 @@ create policy "Members can read the member list"
   on public.group_members for select to authenticated
   using (public.is_group_member(group_id));
 
-create policy "Leave a group"
+-- You can leave a group. The person who created it can also remove members,
+-- which is the defence against someone joining with a second account.
+create policy "Leave a group or be removed by its creator"
   on public.group_members for delete to authenticated
-  using ((select auth.uid()) = user_id);
+  using ((select auth.uid()) = user_id or public.is_group_owner(group_id));
 
 grant all on public.profiles, public.groups, public.group_members to service_role;
 
@@ -153,6 +169,8 @@ begin
 end;
 $$;
 
+revoke execute on function public.is_group_owner(uuid) from public, anon;
+grant execute on function public.is_group_owner(uuid) to authenticated;
 revoke execute on function public.is_group_member(uuid) from public, anon;
 revoke execute on function public.create_group(text) from public, anon;
 revoke execute on function public.join_group(text) from public, anon;

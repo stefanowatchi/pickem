@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { syncOddsIfStale } from "@/lib/odds";
 import { createClient } from "@/lib/supabase/server";
 
 export type FormState = { error?: string; message?: string } | null;
@@ -63,8 +64,25 @@ export async function togglePick(
     .eq("game_id", gameId)
     .maybeSingle();
 
+  const removing = existing?.picked_team === team;
+
+  // A pick is only accepted against fresh odds, so nobody can pick against a
+  // line that news has already moved. Refresh first; the database checks too.
+  if (!removing) {
+    const { data: game } = await supabase
+      .from("games")
+      .select("sport_key, commence_time")
+      .eq("id", gameId)
+      .maybeSingle();
+    if (!game) return { error: "Game not found." };
+
+    const startsSoon =
+      Date.parse(game.commence_time) - Date.now() < 2 * 60 * 60 * 1000;
+    await syncOddsIfStale(game.sport_key, (startsSoon ? 10 : 60) * 60 * 1000);
+  }
+
   const { error } =
-    existing?.picked_team === team
+    removing
       ? await supabase.from("picks").delete().eq("id", existing.id)
       : await supabase
           .from("picks")
@@ -181,4 +199,19 @@ export async function leaveGroup(formData: FormData) {
 
   revalidatePath("/groups");
   redirect("/groups");
+}
+
+// Only a group's creator can remove someone else; the database enforces it.
+export async function removeMember(formData: FormData) {
+  const groupId = String(formData.get("groupId") ?? "");
+  const userId = String(formData.get("userId") ?? "");
+
+  const supabase = await createClient();
+  await supabase
+    .from("group_members")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("user_id", userId);
+
+  revalidatePath(`/groups/${groupId}`);
 }

@@ -8,15 +8,10 @@ import {
   type FormState,
 } from "@/app/actions";
 
-const inputClass =
-  "w-full rounded-md border border-foreground/20 bg-transparent px-3 py-2 text-sm";
-const buttonClass =
-  "shrink-0 whitespace-nowrap rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50";
-
 function FormError({ state }: { state: FormState }) {
   if (!state?.error) return null;
   return (
-    <p role="alert" className="mt-2 text-sm text-red-600">
+    <p role="alert" className="mt-2 text-sm text-loss">
       {state.error}
     </p>
   );
@@ -26,21 +21,21 @@ export function NameForm() {
   const [state, formAction, pending] = useActionState(saveDisplayName, null);
 
   return (
-    <form action={formAction} className="mt-5">
-      <label className="block text-sm font-medium">
-        Display name
+    <form action={formAction} className="card mt-6 p-5">
+      <label className="block">
+        <span className="label">Display name</span>
         <input
           name="displayName"
           required
           minLength={2}
           maxLength={24}
           autoComplete="nickname"
-          className={`mt-1 ${inputClass}`}
+          className="field mt-1.5"
         />
       </label>
       <FormError state={state} />
-      <button disabled={pending} className={`mt-4 w-full ${buttonClass}`}>
-        Continue
+      <button disabled={pending} className="btn-primary mt-4 w-full">
+        Let&apos;s go
       </button>
     </form>
   );
@@ -50,11 +45,11 @@ export function JoinGroupForm() {
   const [state, formAction, pending] = useActionState(joinGroup, null);
 
   return (
-    <form action={formAction}>
-      <label htmlFor="group-code" className="block text-sm font-medium">
+    <form action={formAction} className="card p-4">
+      <label htmlFor="group-code" className="label">
         Join with a code
       </label>
-      <div className="mt-1 flex gap-2">
+      <div className="mt-2 flex gap-2">
         <input
           id="group-code"
           name="code"
@@ -64,9 +59,9 @@ export function JoinGroupForm() {
           placeholder="ABC234"
           autoComplete="off"
           autoCapitalize="characters"
-          className={`${inputClass} font-mono uppercase tracking-widest placeholder:tracking-widest`}
+          className="field font-mono uppercase tracking-[0.3em]"
         />
-        <button disabled={pending} className={buttonClass}>
+        <button disabled={pending} className="btn-primary">
           Join
         </button>
       </div>
@@ -79,22 +74,22 @@ export function CreateGroupForm() {
   const [state, formAction, pending] = useActionState(createGroup, null);
 
   return (
-    <form action={formAction}>
-      <label htmlFor="group-name" className="block text-sm font-medium">
+    <form action={formAction} className="card p-4">
+      <label htmlFor="group-name" className="label">
         Start a new group
       </label>
-      <div className="mt-1 flex gap-2">
+      <div className="mt-2 flex gap-2">
         <input
           id="group-name"
           name="name"
           required
           minLength={2}
           maxLength={40}
-          placeholder="Group name"
+          placeholder="Sunday Crew"
           autoComplete="off"
-          className={inputClass}
+          className="field"
         />
-        <button disabled={pending} className={buttonClass}>
+        <button disabled={pending} className="btn-ghost">
           Create
         </button>
       </div>

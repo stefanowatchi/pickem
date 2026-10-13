@@ -7,6 +7,8 @@ const STALE_MS = 6 * 60 * 60 * 1000; // refetch a league's odds at most every 6 
 const RETRY_MS = 10 * 60 * 1000; // after a failed fetch, wait 10 minutes
 const LOW_CREDITS = 100; // below this, refetch each league only once a day
 const LOW_CREDITS_STALE_MS = 24 * 60 * 60 * 1000;
+// Below this, picks stop forcing a refresh. The database trigger uses the same number.
+const PICK_CREDIT_FLOOR = 50;
 const PREFERRED_BOOKMAKER = "draftkings";
 
 type OddsEvent = {
@@ -27,7 +29,8 @@ type OddsEvent = {
 
 // Fetches odds from The Odds API and saves them, unless they were fetched
 // recently. Never throws: on any failure the page shows the stored odds.
-export async function syncOddsIfStale(sportKey: string) {
+// Pass `maxAgeMs` to demand fresher odds than usual, as saving a pick does.
+export async function syncOddsIfStale(sportKey: string, maxAgeMs?: number) {
   try {
     const admin = createAdminClient();
 
@@ -40,8 +43,11 @@ export async function syncOddsIfStale(sportKey: string) {
     // Credits are shared by all leagues, so use the most recent reading.
     const credits: number | null =
       syncs?.find((row) => row.credits_remaining !== null)?.credits_remaining ?? null;
-    const staleAfter =
+    let staleAfter =
       credits !== null && credits < LOW_CREDITS ? LOW_CREDITS_STALE_MS : STALE_MS;
+    if (maxAgeMs !== undefined && (credits === null || credits >= PICK_CREDIT_FLOOR)) {
+      staleAfter = Math.min(staleAfter, maxAgeMs);
+    }
     if (sync && Date.now() - Date.parse(sync.last_synced_at) < staleAfter) {
       return;
     }
